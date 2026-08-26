@@ -1,0 +1,20 @@
+services:
+  pastebin:
+    build: .
+    image: encrypted-pastebin:latest
+    container_name: pastebin
+    restart: unless-stopped
+    ports:
+      # Хостовый порт берётся из .env (PORT), контейнерный всегда 3000
+      - "${PORT:-3000}:3000"
+    environment:
+      # Значения берутся из файла .env рядом с docker-compose.yml
+      - SESSION_SECRET=${SESSION_SECRET:-dev-secret}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
+      - BASE_URL=${BASE_URL:-}
+    volumes:
+      # Постоянное хранение БД, ключа шифрования и файлов записей
+      - pastebin-data:/app/data
+
+volumes:
+  pastebin-data:

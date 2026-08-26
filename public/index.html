@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Encrypted Pastebin</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🔒 Encrypted Pastebin</div>
+    <div id="user-area" class="user-area"></div>
+  </header>
+
+  <main class="container">
+    <!-- Экран авторизации -->
+    <section id="auth-screen" class="screen">
+      <div class="card">
+        <h2>Вход / Регистрация</h2>
+        <form id="login-form">
+          <input type="text" id="auth-username" placeholder="Имя пользователя" required />
+          <input type="password" id="auth-password" placeholder="Пароль (мин. 6 символов)" required />
+          <div class="row">
+            <button type="submit" data-action="login">Войти</button>
+            <button type="button" id="register-btn">Регистрация</button>
+          </div>
+          <p id="auth-error" class="error"></p>
+        </form>
+      </div>
+    </section>
+
+    <!-- Главный экран (создание записи) -->
+    <section id="main-screen" class="screen hidden">
+      <div class="card">
+        <h2>Новая запись</h2>
+        <input type="text" id="paste-title" placeholder="Название (необязательно)" />
+        <textarea id="paste-content" rows="12" placeholder="Введите текст записи..."></textarea>
+        <button id="create-btn">Зашифровать и создать ссылку</button>
+        <p id="create-error" class="error"></p>
+
+        <div id="result" class="hidden">
+          <h3>Запись создана!</h3>
+          <p>Ссылка на просмотр:</p>
+          <a id="result-link" href="#" target="_blank"></a>
+          <div class="row">
+            <button id="copy-link-btn">Копировать ссылку</button>
+            <button id="open-link-btn">Открыть</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Мои записи</h2>
+        <ul id="my-pastes"></ul>
+      </div>
+    </section>
+
+    <!-- Экран просмотра записи -->
+    <section id="view-screen" class="screen hidden">
+      <div class="card">
+        <h2 id="view-title">Запись</h2>
+        <pre id="view-content" class="code-block"></pre>
+        <div class="row">
+          <a id="download-btn" class="btn" href="#">⬇ Скачать .txt</a>
+          <button id="back-btn">Назад</button>
+        </div>
+        <p id="view-error" class="error"></p>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
