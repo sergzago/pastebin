@@ -15,6 +15,7 @@ const pasteContent = document.getElementById('paste-content');
 const pastePrivate = document.getElementById('paste-private');
 const pastePublicDownload = document.getElementById('paste-public-download');
 const createBtn = document.getElementById('create-btn');
+const cancelCreateBtn = document.getElementById('cancel-create-btn');
 const createError = document.getElementById('create-error');
 
 const resultBox = document.getElementById('result');
@@ -33,6 +34,7 @@ const viewContent = document.getElementById('view-content');
 const downloadBtn = document.getElementById('download-btn');
 const deleteViewBtn = document.getElementById('delete-view-btn');
 const backBtn = document.getElementById('back-btn');
+const homeBtn = document.getElementById('home-btn');
 const viewError = document.getElementById('view-error');
 
 const editBox = document.getElementById('edit-box');
@@ -49,7 +51,10 @@ const viewAnonLink = document.getElementById('view-anon-link');
 
 let currentUser = null;
 let currentSlug = null;
-let currentPaste = null; // данные текущей открытой записи
+let currentPaste = null;
+// Расшифрованный текст текущей записи хранится в памяти,
+// чтобы редактирование не зависело от состояния DOM
+let currentContent = ''; // данные текущей открытой записи
 let registrationEnabled = true;
 
 // ---- Базовый путь (поддержка работы за nginx по под-пути) ----
@@ -67,6 +72,10 @@ const BP = window.__BASE_PATH__ || detectBasePath();
 function u(path) {
   return BP + path;
 }
+
+// Кнопка «На главную» на странице просмотра записи —
+// обычная ссылка на начальную страницу с учётом базового пути (nginx)
+homeBtn.href = u('/');
 
 // ---- Утилиты ----
 async function api(url, options = {}) {
@@ -214,6 +223,38 @@ createBtn.addEventListener('click', async () => {
   }
 });
 
+// ---- Отмена создания записи ----
+// Очищает форму и возвращает на предыдущую страницу.
+// Если предыдущей страницы нет (открыли ссылку напрямую в новой вкладке) —
+// уходим на начальную страницу приложения.
+function resetCreateForm() {
+  pasteTitle.value = '';
+  pasteContent.value = '';
+  pastePrivate.checked = false;
+  pastePublicDownload.checked = false;
+  resultBox.classList.add('hidden');
+  createError.textContent = '';
+}
+cancelCreateBtn.addEventListener('click', () => {
+  const hadInput = pasteContent.value.trim() || pasteTitle.value.trim();
+  if (hadInput && !window.confirm('Отменить создание записи? Введённые данные будут потеряны.')) return;
+  resetCreateForm();
+  // Возврат на предыдущую страницу истории (в пределах этого же origin),
+  // иначе — переход на начальную страницу
+  let back = null;
+  try {
+    if (document.referrer) {
+      const ref = new URL(document.referrer);
+      if (ref.origin === window.location.origin) back = ref.href;
+    }
+  } catch {}
+  if (back !== null || window.history.length > 1) {
+    window.history.back();
+  } else {
+    window.location.href = u('/');
+  }
+});
+
 copyLinkBtn.addEventListener('click', () => {
   navigator.clipboard.writeText(resultLink.href).then(() => {
     copyLinkBtn.textContent = 'Скопировано!';
@@ -283,6 +324,7 @@ async function viewPaste(slug) {
   try {
     const data = await api(u(`/api/pastes/${slug}`));
     currentPaste = data.paste;
+    currentContent = data.content;
     viewTitle.textContent = data.paste.title || 'Запись';
     viewContent.textContent = data.content;
     downloadBtn.href = u('/api/pastes/' + slug + '/download');
@@ -323,11 +365,22 @@ async function viewPaste(slug) {
 }
 
 // ---- Редактирование записи ----
+// Подписи служебных кнопок интерфейса: если они попали в текст,
+// скорее всего пользователь случайно скопировал выделение со страницы
+const UI_LABELS = ['⬇ Скачать .txt', '✏️ Редактировать', '🗑 Удалить', 'Назад', '🏠 На главную', 'Отменить'];
+
+function looksLikePageCopy(text) {
+  const hits = UI_LABELS.filter((l) => text.includes(l)).length;
+  return hits >= 2;
+}
+
 function startEdit() {
   viewError.textContent = '';
   editSuccess.textContent = '';
   editTitle.value = viewTitle.textContent === 'Запись' ? '' : viewTitle.textContent;
-  editContent.value = viewContent.textContent;
+  // Берём текст из памяти (получен с сервера), а не из DOM —
+  // DOM мог быть изменён расширениями браузера или случайным редактированием
+  editContent.value = currentContent;
   editPublicDownload.checked = !!(currentPaste && currentPaste.public_download);
   viewContent.classList.add('hidden');
   editBox.classList.remove('hidden');
@@ -347,10 +400,25 @@ cancelEditBtn.addEventListener('click', cancelEdit);
 saveEditBtn.addEventListener('click', async () => {
   editError.textContent = '';
   editSuccess.textContent = '';
-  const content = editContent.value;
+  let content = editContent.value;
   if (!content.trim()) {
     editError.textContent = 'Текст записи не может быть пустым';
     return;
+  }
+  // Защита от случайного сохранения скопированного со страницы текста
+  // (вместе с выделением могли захватиться подписи кнопок интерфейса)
+  if (looksLikePageCopy(content)) {
+    content = UI_LABELS.reduce((acc, l) => acc.split(l).join(''), content).replace(/\n{3,}/g, '\n\n').trim();
+    if (!content.trim()) {
+      editError.textContent = 'Текст записи не может быть пустым';
+      return;
+    }
+    const proceed = window.confirm(
+      'Похоже, в текст случайно попали названия кнопок интерфейса. Они будут удалены из записи.\n\n' +
+      'Продолжить сохранение? (Отмена — чтобы исправить текст вручную.)'
+    );
+    if (!proceed) return;
+    editContent.value = content;
   }
   try {
     await api(u(`/api/pastes/${currentSlug}`), {

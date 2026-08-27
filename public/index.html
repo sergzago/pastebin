@@ -55,7 +55,10 @@
         <label class="checkbox">
           <input type="checkbox" id="paste-public-download" /> Разрешить скачивание файла по ссылке без авторизации
         </label>
-        <button id="create-btn">Зашифровать и создать ссылку</button>
+        <div class="row">
+          <button id="create-btn">Зашифровать и создать ссылку</button>
+          <button type="button" id="cancel-create-btn">Отменить</button>
+        </div>
         <p id="create-error" class="error"></p>
 
         <div id="result" class="hidden">
@@ -111,6 +114,7 @@
           <button id="edit-btn">✏️ Редактировать</button>
           <button id="delete-view-btn" class="danger">🗑 Удалить</button>
           <button id="back-btn">Назад</button>
+          <a id="home-btn" class="btn" href="/">🏠 На главную</a>
         </div>
         <p id="view-anon-dl" class="hidden">
           ⬇️ Ссылка на скачивание без авторизации:<br />
@@ -132,5 +136,6 @@
       document.body.appendChild(s);
     })();
   </script>
+  <script>
 </body>
 </html>
