@@ -12,6 +12,10 @@ services:
       - SESSION_SECRET=${SESSION_SECRET:-dev-secret}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
       - BASE_URL=${BASE_URL:-}
+      # Базовый путь при работе по под-пути (например /pastebin). Пусто — корень.
+      - BASE_PATH=${BASE_PATH:-}
+      # true — запретить регистрацию новых пользователей
+      - REGISTRATION_DISABLED=${REGISTRATION_DISABLED:-false}
     volumes:
       # Постоянное хранение БД, ключа шифрования и файлов записей
       - pastebin-data:/app/data

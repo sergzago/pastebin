@@ -4,8 +4,19 @@ const db = require('../db');
 
 const router = express.Router();
 
+// Регистрация может быть отключена через переменную окружения
+const registrationEnabled = process.env.REGISTRATION_DISABLED !== 'true';
+
+// Публичная конфигурация для фронтенда
+router.get('/config', (req, res) => {
+  res.json({ registrationEnabled });
+});
+
 // Регистрация пользователя
 router.post('/register', (req, res) => {
+  if (!registrationEnabled) {
+    return res.status(403).json({ error: 'Регистрация отключена' });
+  }
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: 'Введите имя пользователя и пароль' });

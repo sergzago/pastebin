@@ -67,9 +67,23 @@ button:hover, .btn:hover { background: #2f6fe0; }
 button[data-action="login"], button#register-btn { margin-right: 8px; }
 button#register-btn { background: #4b5563; }
 
+button.danger { background: #dc2626; }
+button.danger:hover { background: #b91c1c; }
+.delete-btn {
+  background: #dc2626;
+  font-size: 12px;
+  padding: 4px 10px;
+  margin-left: 8px;
+}
+.delete-btn:hover { background: #b91c1c; }
+
 .row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 
 .error { color: #f87171; margin-top: 8px; min-height: 18px; }
+.success { color: #4ade80; margin-top: 8px; min-height: 18px; }
+.checkbox { display: block; margin: 8px 0; font-size: 14px; color: #cbd5e1; }
+.checkbox input { margin-right: 6px; }
+.author { display: block; font-size: 12px; color: #94a3b8; margin-top: 2px; }
 
 .hidden { display: none; }
 

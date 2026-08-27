@@ -4,7 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Encrypted Pastebin</title>
-  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" id="app-style" />
+  <script>
+    // Базовый путь (поддержка работы за nginx по под-пути).
+    // Если сервер не задал BASE_PATH (например, nginx срезает префикс),
+    // определяем префикс автоматически из URL страницы.
+    window.__BASE_PATH__ = "__BASE_PATH__";
+    var bp = window.__BASE_PATH__ || '';
+    if (!bp) {
+      var p = (window.location.pathname || '/').replace(/\/+$/, '');
+      var m = p.match(/(.*)\/p\/[^/]+$/); // страница /p/:slug
+      bp = m ? (m[1] || '') : (p || '');
+      window.__BASE_PATH__ = bp;
+    }
+    document.getElementById('app-style').setAttribute('href', bp + '/style.css');
+  </script>
 </head>
 <body>
   <header class="topbar">
@@ -35,6 +49,12 @@
         <h2>Новая запись</h2>
         <input type="text" id="paste-title" placeholder="Название (необязательно)" />
         <textarea id="paste-content" rows="12" placeholder="Введите текст записи..."></textarea>
+        <label class="checkbox">
+          <input type="checkbox" id="paste-private" /> Приватная запись (видна только вам)
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" id="paste-public-download" /> Разрешить скачивание файла по ссылке без авторизации
+        </label>
         <button id="create-btn">Зашифровать и создать ссылку</button>
         <p id="create-error" class="error"></p>
 
@@ -42,11 +62,20 @@
           <h3>Запись создана!</h3>
           <p>Ссылка на просмотр:</p>
           <a id="result-link" href="#" target="_blank"></a>
+          <p id="result-download-wrap" class="hidden">
+            Скачивание без авторизации:<br />
+            <a id="result-download-link" href="#" target="_blank"></a>
+          </p>
           <div class="row">
             <button id="copy-link-btn">Копировать ссылку</button>
             <button id="open-link-btn">Открыть</button>
           </div>
         </div>
+      </div>
+
+      <div class="card">
+        <h2>Все записи</h2>
+        <ul id="all-pastes"></ul>
       </div>
 
       <div class="card">
@@ -59,16 +88,49 @@
     <section id="view-screen" class="screen hidden">
       <div class="card">
         <h2 id="view-title">Запись</h2>
+        <p id="view-meta" class="meta"></p>
         <pre id="view-content" class="code-block"></pre>
+
+        <!-- Редактирование записи -->
+        <div id="edit-box" class="hidden">
+          <h3>Редактирование записи</h3>
+          <input type="text" id="edit-title" placeholder="Название (необязательно)" />
+          <textarea id="edit-content" rows="12" placeholder="Текст записи..."></textarea>
+          <label class="checkbox">
+            <input type="checkbox" id="edit-public-download" /> Разрешить скачивание файла по ссылке без авторизации
+          </label>
+          <div class="row">
+            <button id="save-edit-btn">Сохранить</button>
+            <button type="button" id="cancel-edit-btn">Отмена</button>
+          </div>
+          <p id="edit-error" class="error"></p>
+        </div>
+
         <div class="row">
           <a id="download-btn" class="btn" href="#">⬇ Скачать .txt</a>
+          <button id="edit-btn">✏️ Редактировать</button>
+          <button id="delete-view-btn" class="danger">🗑 Удалить</button>
           <button id="back-btn">Назад</button>
         </div>
+        <p id="view-anon-dl" class="hidden">
+          ⬇️ Ссылка на скачивание без авторизации:<br />
+          <a id="view-anon-link" target="_blank"></a>
+        </p>
         <p id="view-error" class="error"></p>
+        <p id="edit-success" class="success"></p>
       </div>
     </section>
   </main>
 
-  <script src="/app.js"></script>
+  <script>
+    // Загружаем app.js надёжным способом (createElement + appendChild),
+    // чтобы скрипт гарантированно выполнился и привязал обработчики кнопок.
+    (function () {
+      var bp = window.__BASE_PATH__ || '';
+      var s = document.createElement('script');
+      s.src = bp + '/app.js';
+      document.body.appendChild(s);
+    })();
+  </script>
 </body>
 </html>

@@ -27,9 +27,20 @@ db.exec(`
     filename TEXT NOT NULL,
     title TEXT,
     iv TEXT NOT NULL,
+    private INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
 `);
+
+// Миграция: добавляем колонку `private` в уже существующую таблицу pastes
+const pasteCols = db.prepare("PRAGMA table_info(pastes)").all();
+if (!pasteCols.some((c) => c.name === 'private')) {
+  db.exec('ALTER TABLE pastes ADD COLUMN private INTEGER NOT NULL DEFAULT 0');
+}
+// Миграция: параметр «разрешить скачивание без авторизации»
+if (!pasteCols.some((c) => c.name === 'public_download')) {
+  db.exec('ALTER TABLE pastes ADD COLUMN public_download INTEGER NOT NULL DEFAULT 0');
+}
 
 module.exports = db;
