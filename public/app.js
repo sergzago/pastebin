@@ -34,7 +34,6 @@ const viewContent = document.getElementById('view-content');
 const downloadBtn = document.getElementById('download-btn');
 const deleteViewBtn = document.getElementById('delete-view-btn');
 const backBtn = document.getElementById('back-btn');
-const homeBtn = document.getElementById('home-btn');
 const viewError = document.getElementById('view-error');
 
 const editBox = document.getElementById('edit-box');
@@ -72,10 +71,6 @@ const BP = window.__BASE_PATH__ || detectBasePath();
 function u(path) {
   return BP + path;
 }
-
-// Кнопка «На главную» на странице просмотра записи —
-// обычная ссылка на начальную страницу с учётом базового пути (nginx)
-homeBtn.href = u('/');
 
 // ---- Утилиты ----
 async function api(url, options = {}) {
@@ -124,6 +119,77 @@ function parseSlug() {
   const m = p.match(/^\/p\/([^/]+)$/);
   return m ? m[1] : null;
 }
+
+// ---- SPA-навигация ----
+// Переходы между страницами выполняются без полной перезагрузки страницы.
+// Это устраняет мигание/пустой экран при переключении между страницами:
+// содержимое обновляется мгновенно, а URL меняется через history.pushState.
+
+// slug из пути (без учёта базового пути)
+function slugFromPath(p) {
+  p = p || window.location.pathname || '/';
+  if (BP && p.startsWith(BP)) p = p.slice(BP.length) || '/';
+  const m = p.match(/^\/p\/([^/]+)\/?$/);
+  return m ? m[1] : null;
+}
+
+// slug, зашитый в атрибуте href ссылки (например "/p/abc" или "/pastebin/p/abc")
+function slugFromHref(href) {
+  if (!href || href.charAt(0) === '#' || href.indexOf('://') !== -1) return null;
+  const m = href.match(/(?:\/)(p)\/([^/]+)\/?$/);
+  return m ? m[2] : null;
+}
+
+// Открыть страницу записи (SPA, без перезагрузки)
+async function openSlug(slug) {
+  if (!currentUser) { showScreen('auth'); return; }
+  await viewPaste(slug);
+}
+
+// Открыть главную (SPA)
+function openHome() {
+  showScreen('main');
+  loadAllPastes();
+  loadMyPastes();
+}
+
+// Переход по внутренней ссылке: /p/:slug → запись, иначе → главная
+async function navigateTo(path) {
+  const p = path || window.location.pathname;
+  const slug = slugFromPath(p);
+  if (slug) await openSlug(slug);
+  else openHome();
+}
+
+// Перехват кликов по обычным внутренним ссылкам на записи,
+// чтобы переход происходил без перезагрузки страницы (no flash).
+document.addEventListener('click', async (e) => {
+  const el = e.target && e.target.closest ? e.target.closest('a') : null;
+  if (!el) return;
+  // Не перехватываем открытие в новой вкладке / с модификаторами
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  if (el.getAttribute('target') === '_blank') return;
+  const slug = slugFromHref(el.getAttribute('href'));
+  if (!slug) return;
+  e.preventDefault();
+  const target = u('/p/' + slug);
+  if (window.location.pathname + window.location.search !== target) {
+    window.history.pushState({}, '', target);
+  }
+  await openSlug(slug);
+});
+
+// Навигация кнопками браузера «назад»/«вперёд» (history) — тоже без перезагрузки
+window.addEventListener('popstate', () => {
+  const slug = slugFromPath();
+  if (slug && currentUser) {
+    viewPaste(slug);
+  } else if (currentUser) {
+    openHome();
+  } else {
+    showScreen('auth');
+  }
+});
 
 // ---- Авторизация ----
 async function refreshMe() {
@@ -199,10 +265,13 @@ createBtn.addEventListener('click', async () => {
         public_download: pastePublicDownload.checked,
       }),
     });
-    const linkData = await api(u(`/api/link/${data.paste.slug}`));
-    resultLink.href = linkData.url;
-    resultLink.textContent = linkData.url;
-    openLinkBtn.onclick = () => { window.location.href = linkData.url; };
+    const linkUrl = window.location.origin + u('/p/' + data.paste.slug);
+    resultLink.href = linkUrl;
+    resultLink.textContent = linkUrl;
+    openLinkBtn.onclick = () => {
+      window.history.pushState({}, '', u('/p/' + data.paste.slug));
+      openSlug(data.paste.slug);
+    };
     // Прямая ссылка на скачивание без авторизации (если включена)
     if (data.paste.public_download) {
       const dlUrl = window.location.origin + u('/api/pastes/' + data.paste.slug + '/download');
@@ -224,9 +293,7 @@ createBtn.addEventListener('click', async () => {
 });
 
 // ---- Отмена создания записи ----
-// Очищает форму и возвращает на предыдущую страницу.
-// Если предыдущей страницы нет (открыли ссылку напрямую в новой вкладке) —
-// уходим на начальную страницу приложения.
+// Очищает форму (без перехода на другую страницу).
 function resetCreateForm() {
   pasteTitle.value = '';
   pasteContent.value = '';
@@ -239,20 +306,6 @@ cancelCreateBtn.addEventListener('click', () => {
   const hadInput = pasteContent.value.trim() || pasteTitle.value.trim();
   if (hadInput && !window.confirm('Отменить создание записи? Введённые данные будут потеряны.')) return;
   resetCreateForm();
-  // Возврат на предыдущую страницу истории (в пределах этого же origin),
-  // иначе — переход на начальную страницу
-  let back = null;
-  try {
-    if (document.referrer) {
-      const ref = new URL(document.referrer);
-      if (ref.origin === window.location.origin) back = ref.href;
-    }
-  } catch {}
-  if (back !== null || window.history.length > 1) {
-    window.history.back();
-  } else {
-    window.location.href = u('/');
-  }
 });
 
 copyLinkBtn.addEventListener('click', () => {
@@ -367,7 +420,7 @@ async function viewPaste(slug) {
 // ---- Редактирование записи ----
 // Подписи служебных кнопок интерфейса: если они попали в текст,
 // скорее всего пользователь случайно скопировал выделение со страницы
-const UI_LABELS = ['⬇ Скачать .txt', '✏️ Редактировать', '🗑 Удалить', 'Назад', '🏠 На главную', 'Отменить'];
+const UI_LABELS = ['⬇ Скачать .txt', '✏️ Редактировать', '🗑 Удалить', 'Назад', 'Отменить'];
 
 function looksLikePageCopy(text) {
   const hits = UI_LABELS.filter((l) => text.includes(l)).length;
@@ -467,9 +520,15 @@ async function deletePaste(slug, fromView) {
 // ---- Инициализация ----
 async function enterApp() {
   renderUser();
-  showScreen('main');
-  await loadAllPastes();
-  await loadMyPastes();
+  // После входа возвращаемся к записи, если URL указывает на /p/:slug
+  const slug = parseSlug();
+  if (slug && currentUser) {
+    await viewPaste(slug);
+  } else {
+    showScreen('main');
+    await loadAllPastes();
+    await loadMyPastes();
+  }
 }
 
 async function init() {

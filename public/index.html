@@ -4,11 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Encrypted Pastebin</title>
+  <!-- Стили: href безусловно задаётся inline-скриптом ниже (до рендера <body>),
+       поэтому мигания без форматирования (FOUC) нет; путь учитывает base_path
+       и корректно работает за nginx как со срезанием префикса, так и с под-путём. -->
   <link rel="stylesheet" id="app-style" />
   <script>
     // Базовый путь (поддержка работы за nginx по под-пути).
-    // Если сервер не задал BASE_PATH (например, nginx срезает префикс),
-    // определяем префикс автоматически из URL страницы.
+    // Приоритет — значение, подставленное сервером (BASE_PATH / auto-detect из URL запроса).
+    // Иначе определяем автоматически из URL страницы (nginx может срезать префикс).
     window.__BASE_PATH__ = "__BASE_PATH__";
     var bp = window.__BASE_PATH__ || '';
     if (!bp) {
@@ -17,7 +20,9 @@
       bp = m ? (m[1] || '') : (p || '');
       window.__BASE_PATH__ = bp;
     }
-    document.getElementById('app-style').setAttribute('href', bp + '/style.css');
+    // Всегда устанавливаем href из фактического base path на клиенте —
+    // работает и при срезании префикса nginx, и при фиксированном BASE_PATH.
+    document.getElementById('app-style').href = bp + '/style.css';
   </script>
 </head>
 <body>
@@ -28,7 +33,7 @@
 
   <main class="container">
     <!-- Экран авторизации -->
-    <section id="auth-screen" class="screen">
+    <section id="auth-screen" class="screen hidden">
       <div class="card">
         <h2>Вход / Регистрация</h2>
         <form id="login-form">
@@ -114,7 +119,6 @@
           <button id="edit-btn">✏️ Редактировать</button>
           <button id="delete-view-btn" class="danger">🗑 Удалить</button>
           <button id="back-btn">Назад</button>
-          <a id="home-btn" class="btn" href="/">🏠 На главную</a>
         </div>
         <p id="view-anon-dl" class="hidden">
           ⬇️ Ссылка на скачивание без авторизации:<br />

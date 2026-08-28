@@ -58,7 +58,8 @@ app.use((req, res, next) => {
 // Шаблон главной страницы (кэшируем), куда подставляем актуальный BASE_PATH
 const indexTemplate = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 function sendIndex(req, res) {
-  res.send(indexTemplate.replace('"__BASE_PATH__"', JSON.stringify(req.basePath || '')));
+  const basePath = req.basePath || '';
+  res.send(indexTemplate.replace('"__BASE_PATH__"', JSON.stringify(basePath)));
 }
 
 app.use(express.json());
