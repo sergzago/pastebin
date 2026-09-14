@@ -1,4 +1,12 @@
 # Запуск сервиса в Docker
+Порядок запуска:
+- строим образ
+docker compose build
+- на стороне сервера удаляем образ:
+docker image rm encrypted-pastebin
+- копируем образ на сервер
+docker save encrypted-pastebin:latest | gzip | ssh zago@zago.404.mn -p 11022 'docker load'
+
 
 Этот документ описывает, как собрать и запустить Encrypted Pastebin в контейнере Docker, а также особенности хранения данных и безопасности.
 
